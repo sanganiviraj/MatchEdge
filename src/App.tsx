@@ -9,12 +9,13 @@ import { VerificationPanel } from './components/VerificationPanel';
 import { NoArbitrageBanner } from './components/NoArbitrageBanner';
 import { FormulaExplanation } from './components/FormulaExplanation';
 
-import type { MarketType, AllocationMode, OutcomeInput, ValidationErrors } from './types/arbitrage';
+import type { MarketType, AllocationMode, IdCalculationBasis, OutcomeInput, ValidationErrors } from './types/arbitrage';
 import { calculateArbitrage, validateCalculatorInputs } from './utils/calculatorEngine';
 
 import './App.css';
 
 const DEFAULT_TOTAL_AMOUNT = 10000;
+const DEFAULT_MAX_PAYOUT = 1000;
 const DEFAULT_MAX_STAKE = 100;
 
 const DEFAULT_OUTCOMES: OutcomeInput[] = [
@@ -26,8 +27,11 @@ const DEFAULT_OUTCOMES: OutcomeInput[] = [
 export function App() {
   const [marketType, setMarketType] = useState<MarketType>('3WAY');
   const [allocationMode, setAllocationMode] = useState<AllocationMode>('EXACT');
+  const [idCalculationBasis, setIdCalculationBasis] = useState<IdCalculationBasis>('PAYOUT');
   const [totalAmount, setTotalAmount] = useState<number | ''>(DEFAULT_TOTAL_AMOUNT);
+  const [maxPayoutPerId, setMaxPayoutPerId] = useState<number | ''>(DEFAULT_MAX_PAYOUT);
   const [maxStakePerId, setMaxStakePerId] = useState<number | ''>(DEFAULT_MAX_STAKE);
+  const [splitDrawIds, setSplitDrawIds] = useState<boolean>(true);
   const [outcomesInput, setOutcomesInput] = useState<OutcomeInput[]>(DEFAULT_OUTCOMES);
 
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -40,26 +44,34 @@ export function App() {
     return validateCalculatorInputs(
       marketType,
       totalAmount,
+      maxPayoutPerId,
       maxStakePerId,
+      idCalculationBasis,
       homeOdds,
       drawOdds,
       awayOdds
     );
-  }, [marketType, totalAmount, maxStakePerId, outcomesInput]);
+  }, [marketType, totalAmount, maxPayoutPerId, maxStakePerId, idCalculationBasis, outcomesInput]);
 
   const result = useMemo(() => {
-    if (Object.keys(errors).length > 0 || totalAmount === '' || maxStakePerId === '') {
+    if (Object.keys(errors).length > 0 || totalAmount === '') {
       return null;
     }
+    if (idCalculationBasis === 'PAYOUT' && maxPayoutPerId === '') return null;
+    if (idCalculationBasis === 'STAKE' && maxStakePerId === '') return null;
+    if (idCalculationBasis === 'DUAL' && (maxPayoutPerId === '' || maxStakePerId === '')) return null;
 
     return calculateArbitrage(
       marketType,
       allocationMode,
+      idCalculationBasis,
       Number(totalAmount),
-      Number(maxStakePerId),
-      outcomesInput
+      Number(maxPayoutPerId || 1000),
+      Number(maxStakePerId || 100),
+      outcomesInput,
+      splitDrawIds
     );
-  }, [marketType, allocationMode, totalAmount, maxStakePerId, outcomesInput, errors]);
+  }, [marketType, allocationMode, idCalculationBasis, totalAmount, maxPayoutPerId, maxStakePerId, outcomesInput, splitDrawIds, errors]);
 
   const handleMarketTypeChange = (newMarket: MarketType) => {
     setMarketType(newMarket);
@@ -80,8 +92,11 @@ export function App() {
   const handleReset = () => {
     setMarketType('3WAY');
     setAllocationMode('EXACT');
+    setIdCalculationBasis('PAYOUT');
     setTotalAmount(DEFAULT_TOTAL_AMOUNT);
+    setMaxPayoutPerId(DEFAULT_MAX_PAYOUT);
     setMaxStakePerId(DEFAULT_MAX_STAKE);
+    setSplitDrawIds(true);
     setOutcomesInput(DEFAULT_OUTCOMES);
   };
 
@@ -101,14 +116,20 @@ export function App() {
         <MatchInputSection
           marketType={marketType}
           allocationMode={allocationMode}
+          idCalculationBasis={idCalculationBasis}
           totalAmount={totalAmount}
+          maxPayoutPerId={maxPayoutPerId}
           maxStakePerId={maxStakePerId}
+          splitDrawIds={splitDrawIds}
           outcomesInput={outcomesInput}
           errors={errors}
           onMarketTypeChange={handleMarketTypeChange}
           onAllocationModeChange={setAllocationMode}
+          onIdCalculationBasisChange={setIdCalculationBasis}
           onTotalAmountChange={setTotalAmount}
+          onMaxPayoutChange={setMaxPayoutPerId}
           onMaxStakeChange={setMaxStakePerId}
+          onSplitDrawIdsChange={setSplitDrawIds}
           onOddsChange={handleOddsChange}
           onTeamNameChange={handleTeamNameChange}
           onCalculate={handleCalculate}

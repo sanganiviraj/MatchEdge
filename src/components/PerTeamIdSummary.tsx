@@ -20,7 +20,11 @@ export const PerTeamIdSummary: React.FC<PerTeamIdSummaryProps> = ({ result }) =>
           <h2 className="panel-heading">Per-Outcome Required IDs & Investment Summary</h2>
         </div>
         <div className="header-meta-badge">
-          <span className="badge-mode">Max Stake / ID: ${result.maxStakePerId}</span>
+          <span className="badge-mode">
+            {result.idCalculationBasis === 'PAYOUT'
+              ? `Max Payout / ID: $${result.maxPayoutPerId}`
+              : `Max Stake / ID: $${result.maxStakePerId}`}
+          </span>
         </div>
       </div>
 
@@ -28,6 +32,7 @@ export const PerTeamIdSummary: React.FC<PerTeamIdSummaryProps> = ({ result }) =>
         {result.outcomes.map((o) => {
           const isProfit = o.profit >= 0;
           const isDraw = o.id === 'DRAW';
+          const isSingleDraw = isDraw && !result.splitDrawIds;
 
           return (
             <div key={o.id} className="team-id-card">
@@ -50,7 +55,7 @@ export const PerTeamIdSummary: React.FC<PerTeamIdSummaryProps> = ({ result }) =>
                 <div className="hero-stat">
                   <span className="hero-lbl">Total IDs Required</span>
                   <span className="hero-val text-dark num-tabular">
-                    {isDraw ? '1 ID' : `${o.requiredIdsCount} IDs`}
+                    {isSingleDraw ? '1 ID' : `${o.requiredIdsCount} IDs`}
                   </span>
                 </div>
               </div>
@@ -64,27 +69,36 @@ export const PerTeamIdSummary: React.FC<PerTeamIdSummaryProps> = ({ result }) =>
                 </div>
 
                 <div className="last-id-details-box">
-                  {isDraw ? (
+                  {isSingleDraw ? (
                     <div className="dist-chip chip-last-partial">
                       <span>
                         Single Account (<strong>ID #1</strong>): invested full Draw money{' '}
-                        <strong className="text-blue">{formatCurrency(o.actualStake)}</strong>
+                        <strong className="text-blue">{formatCurrency(o.actualStake)}</strong> (Payout: {formatCurrency(o.payout)})
                       </span>
                     </div>
                   ) : (
                     <>
                       {o.fullIdsCount > 0 && (
                         <div className="dist-chip chip-full">
-                          <strong>{o.fullIdsCount} IDs</strong> × {formatCurrency(result.maxStakePerId)} (Full)
+                          <strong>{o.fullIdsCount} IDs</strong> × {formatCurrency(o.stakePerFullId)} ({formatCurrency(o.payoutPerFullId)} Payout / ID)
                         </div>
                       )}
 
-                      <div className={`dist-chip ${o.isLastIdPartial ? 'chip-last-partial' : 'chip-full'}`}>
-                        <span>
-                          Last ID (<strong>ID #{o.lastIdNumber}</strong>): invested{' '}
-                          <strong className="text-blue">{formatCurrency(o.lastIdAmount)}</strong>
-                        </span>
-                      </div>
+                      {o.isLastIdPartial ? (
+                        <div className="dist-chip chip-last-partial">
+                          <span>
+                            Last ID (<strong>ID #{o.lastIdNumber}</strong>): invested{' '}
+                            <strong className="text-blue">{formatCurrency(o.lastIdAmount)}</strong> ({formatCurrency(o.lastIdPayout)} Payout)
+                          </span>
+                        </div>
+                      ) : o.fullIdsCount === 0 && (
+                        <div className="dist-chip chip-full">
+                          <span>
+                            ID #1: invested{' '}
+                            <strong className="text-blue">{formatCurrency(o.lastIdAmount)}</strong> ({formatCurrency(o.lastIdPayout)} Payout)
+                          </span>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>

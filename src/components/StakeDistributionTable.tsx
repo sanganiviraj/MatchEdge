@@ -23,7 +23,7 @@ export const StakeDistributionTable: React.FC<StakeDistributionTableProps> = ({ 
         </div>
         <div className="header-meta-badge">
           <span className="badge-mode">
-            Mode: {isExactMode ? 'Mode 1 — Exact Stake' : `Mode 2 — Full $${result.maxStakePerId} Units`}
+            {result.idCalculationBasis === 'PAYOUT' ? `Basis: Max Payout $${result.maxPayoutPerId}/ID` : `Basis: Max Stake $${result.maxStakePerId}/ID`} • {isExactMode ? 'Exact Mode' : 'Full Units Mode'}
           </span>
         </div>
       </div>
@@ -37,8 +37,8 @@ export const StakeDistributionTable: React.FC<StakeDistributionTableProps> = ({ 
               <th className="th-right">Implied %</th>
               <th className="th-right">Ideal Stake</th>
               <th className="th-right">IDs Needed</th>
-              <th className="th-right">${result.maxStakePerId} Units</th>
-              <th className="th-right">Remaining Stake</th>
+              <th className="th-right">{result.idCalculationBasis === 'PAYOUT' ? `$${result.maxPayoutPerId} Payout Units` : `$${result.maxStakePerId} Units`}</th>
+              <th className="th-right">Remaining ID</th>
               <th className="th-right">Gross Payout</th>
               <th className="th-right">Net Profit</th>
               <th className="th-right">ROI (%)</th>
@@ -48,6 +48,7 @@ export const StakeDistributionTable: React.FC<StakeDistributionTableProps> = ({ 
             {result.outcomes.map((o) => {
               const isProfit = o.profit >= 0;
               const isDraw = o.id === 'DRAW';
+              const isSingleDraw = isDraw && !result.splitDrawIds;
 
               return (
                 <tr key={o.id}>
@@ -63,15 +64,27 @@ export const StakeDistributionTable: React.FC<StakeDistributionTableProps> = ({ 
                     {formatCurrency(o.theoreticalStake)}
                   </td>
                   <td className="td-right num-tabular">
-                    <span className={`id-pill ${isDraw ? 'id-pill-draw' : ''}`}>
-                      {isDraw ? '1 ID (Single ID)' : `${o.requiredIdsCount} IDs`}
+                    <span className={`id-pill ${isSingleDraw ? 'id-pill-draw' : ''}`}>
+                      {isSingleDraw ? '1 ID (Single ID)' : `${o.requiredIdsCount} IDs`}
                     </span>
                   </td>
                   <td className="td-right num-tabular cell-nowrap">
-                    {isDraw ? `1 × ${formatCurrency(o.actualStake)}` : `${o.fullIdsCount} × $${result.maxStakePerId}`}
+                    {isSingleDraw ? (
+                      `1 × ${formatCurrency(o.actualStake)}`
+                    ) : o.fullIdsCount > 0 ? (
+                      `${o.fullIdsCount} × ${formatCurrency(o.stakePerFullId)}`
+                    ) : (
+                      '0 Units'
+                    )}
                   </td>
-                  <td className="td-right num-tabular text-subtle">
-                    {isDraw ? '—' : o.remainingStake > 0 ? formatCurrency(o.remainingStake) : '—'}
+                  <td className="td-right num-tabular text-subtle cell-nowrap">
+                    {isSingleDraw ? (
+                      '—'
+                    ) : o.isLastIdPartial ? (
+                      `${formatCurrency(o.lastIdAmount)} (${formatCurrency(o.lastIdPayout)})`
+                    ) : (
+                      '—'
+                    )}
                   </td>
                   <td className="td-right num-tabular font-medium text-blue">
                     {formatCurrency(o.payout)}
@@ -102,8 +115,8 @@ export const StakeDistributionTable: React.FC<StakeDistributionTableProps> = ({ 
                 {formatCurrency(result.actualTotalInvestment)}
               </td>
               <td className="td-right num-tabular bold-val cell-nowrap">{result.totalIdsRequired} IDs</td>
-              <td className="td-right num-tabular cell-nowrap">{result.totalFullUnits} Units + Draw</td>
-              <td className="td-right num-tabular">—</td>
+              <td className="td-right num-tabular cell-nowrap">{result.totalFullUnits} Full Units</td>
+              <td className="td-right num-tabular">{result.totalPartialUnits} Remainder</td>
               <td className="td-right num-tabular bold-val text-blue">
                 {formatCurrency(result.expectedPayoutAvg)} (Avg)
               </td>
@@ -122,7 +135,7 @@ export const StakeDistributionTable: React.FC<StakeDistributionTableProps> = ({ 
         <div className="table-notice-banner notice-blue">
           <Info size={16} className="text-blue flex-shrink-0" />
           <span>
-            <strong>FULL ${result.maxStakePerId} UNITS MODE ACTIVE:</strong> Ideal stakes rounded UP to nearest full ${result.maxStakePerId} unit (Team selections). Draw is invested in 1 single ID. Total investment increased by <strong>+{formatCurrency(result.additionalInvestmentTotal)}</strong>.
+            <strong>FULL UNITS MODE ACTIVE:</strong> Ideal stakes rounded UP to nearest full {result.idCalculationBasis === 'PAYOUT' ? `$${result.maxPayoutPerId} Payout` : `$${result.maxStakePerId} Stake`} unit. {result.splitDrawIds ? 'Draw is divided across IDs.' : 'Draw is invested in 1 single ID.'} Total investment increased by <strong>+{formatCurrency(result.additionalInvestmentTotal)}</strong>.
           </span>
         </div>
       )}

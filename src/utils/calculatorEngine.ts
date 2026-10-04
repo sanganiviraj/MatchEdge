@@ -1,6 +1,7 @@
 import type {
   MarketType,
   AllocationMode,
+  IdCalculationBasis,
   OutcomeInput,
   OutcomeResult,
   ArbitrageResult,
@@ -32,7 +33,9 @@ export function formatPct(val: number, decimals: number = 2): string {
 export function validateCalculatorInputs(
   marketType: MarketType,
   totalAmount: number | '',
+  maxPayoutPerId: number | '',
   maxStakePerId: number | '',
+  idCalculationBasis: IdCalculationBasis,
   homeOdds: number | '',
   drawOdds: number | '',
   awayOdds: number | ''
@@ -43,8 +46,16 @@ export function validateCalculatorInputs(
     errors.totalAmount = 'Total amount must be greater than $0';
   }
 
-  if (maxStakePerId === '' || isNaN(Number(maxStakePerId)) || Number(maxStakePerId) <= 0) {
-    errors.maxStakePerId = 'Maximum stake must be greater than $0';
+  if (idCalculationBasis === 'PAYOUT' || idCalculationBasis === 'DUAL') {
+    if (maxPayoutPerId === '' || isNaN(Number(maxPayoutPerId)) || Number(maxPayoutPerId) <= 0) {
+      errors.maxPayoutPerId = 'Maximum payout must be greater than $0';
+    }
+  }
+
+  if (idCalculationBasis === 'STAKE' || idCalculationBasis === 'DUAL') {
+    if (maxStakePerId === '' || isNaN(Number(maxStakePerId)) || Number(maxStakePerId) <= 0) {
+      errors.maxStakePerId = 'Maximum stake must be greater than $0';
+    }
   }
 
   if (homeOdds === '' || isNaN(Number(homeOdds)) || Number(homeOdds) <= 1.0) {
@@ -67,9 +78,12 @@ export function validateCalculatorInputs(
 export function calculateArbitrage(
   marketType: MarketType,
   allocationMode: AllocationMode,
+  idCalculationBasis: IdCalculationBasis,
   totalTargetInvestment: number,
+  maxPayoutPerId: number,
   maxStakePerId: number,
-  outcomesInput: OutcomeInput[]
+  outcomesInput: OutcomeInput[],
+  splitDrawIds: boolean = true
 ): ArbitrageResult | null {
   const activeInputs = outcomesInput.filter(
     (o) => marketType === '3WAY' || o.id !== 'DRAW'
@@ -81,16 +95,29 @@ export function calculateArbitrage(
     odds: typeof o.odds === 'number' && o.odds > 1.0 ? o.odds : 0,
   }));
 
-  if (validInputs.some((o) => o.odds <= 1.0) || totalTargetInvestment <= 0 || maxStakePerId <= 0) {
+  if (validInputs.some((o) => o.odds <= 1.0) || totalTargetInvestment <= 0) {
     return null;
   }
+
+  if (idCalculationBasis === 'PAYOUT' && maxPayoutPerId <= 0) {
+    return null;
+  }
+  if (idCalculationBasis === 'STAKE' && maxStakePerId <= 0) {
+    return null;
+  }
+  if (idCalculationBasis === 'DUAL' && (maxPayoutPerId <= 0 || maxStakePerId <= 0)) {
+    return null;
+  }
+
+  const effectiveMaxPayout = maxPayoutPerId > 0 ? maxPayoutPerId : 1000;
+  const effectiveMaxStake = maxStakePerId > 0 ? maxStakePerId : 100;
 
   const impliedProbs = validInputs.map((o) => 1 / o.odds);
   const sumProbability = impliedProbs.reduce((sum, p) => sum + p, 0);
   const sumProbabilityPct = sumProbability * 100;
 
   const isTrueArbitrage = sumProbability > 0 && sumProbability < 1.0;
-  const arbitrageMarginPct = isTrueArbitrage ? (1 - sumProbability) * 100 : (1 - sumProbability) * 100;
+  const arbitrageMarginPct = (1 - sumProbability) * 100;
   const theoreticalRoiPct = sumProbability > 0 ? ((1 / sumProbability) - 1) * 100 : 0;
 
   let rawStakes = validInputs.map((_o, idx) => {
@@ -110,41 +137,136 @@ export function calculateArbitrage(
 
   const outcomes: OutcomeResult[] = validInputs.map((o, idx) => {
     const theoreticalStake = rawStakes[idx];
-    
-    let fullIdsCount = 0;
-    let remainder = 0;
-    let requiredIdsCount = 1;
-    let lastIdNumber = 1;
-    let lastIdAmount = theoreticalStake;
-    let isLastIdPartial = false;
+    const targetPayout = Number((theoreticalStake * o.odds).toFixed(2));
 
-    if (o.id === 'DRAW') {
-      requiredIdsCount = 1;
-      fullIdsCount = 0;
-      remainder = theoreticalStake;
-      lastIdNumber = 1;
-      lastIdAmount = theoreticalStake;
-      isLastIdPartial = false;
+    let capacityStake: number;
+    let capacityPayout: number;
+
+    if (idCalculationBasis === 'PAYOUT') {
+      capacityPayout = effectiveMaxPayout;
+      capacityStake = Number((effectiveMaxPayout / o.odds).toFixed(2));
+    } else if (idCalculationBasis === 'STAKE') {
+      capacityStake = effectiveMaxStake;
+      capacityPayout = Number((effectiveMaxStake * o.odds).toFixed(2));
     } else {
-      fullIdsCount = Math.floor(theoreticalStake / maxStakePerId);
-      remainder = Number((theoreticalStake % maxStakePerId).toFixed(2));
-      requiredIdsCount = remainder > 0 ? fullIdsCount + 1 : fullIdsCount;
-      lastIdNumber = requiredIdsCount;
-      lastIdAmount = remainder > 0 ? remainder : (requiredIdsCount > 0 ? maxStakePerId : 0);
-      isLastIdPartial = remainder > 0;
-
-      if (fullIdsCount > 0) totalFullUnits += fullIdsCount;
-      if (remainder > 0) totalPartialUnits += 1;
+      const stakeCapFromPayout = effectiveMaxPayout / o.odds;
+      capacityStake = Number(Math.min(effectiveMaxStake, stakeCapFromPayout).toFixed(2));
+      capacityPayout = Number((capacityStake * o.odds).toFixed(2));
     }
 
+    if (capacityStake <= 0) capacityStake = 1;
+    if (capacityPayout <= 0) capacityPayout = 1;
+
+    let fullIdsCount = 0;
+    let requiredIdsCount = 1;
+    let remainingStake = 0;
+    let remainingPayout = 0;
+    let lastIdNumber = 1;
+    let lastIdAmount = theoreticalStake;
+    let lastIdPayout = targetPayout;
+    let isLastIdPartial = false;
     let actualStake = theoreticalStake;
     let additionalAllocation = 0;
-    let fullUnitsCount = o.id === 'DRAW' ? 1 : Math.ceil(theoreticalStake / maxStakePerId);
-    const hasPartialUnit = o.id === 'DRAW' ? false : remainder > 0;
+    let fullUnitsCount = 1;
+    let hasPartialUnit = false;
 
-    if (allocationMode === 'FULL_UNITS' && o.id !== 'DRAW') {
-      actualStake = Math.ceil(theoreticalStake / maxStakePerId) * maxStakePerId;
-      additionalAllocation = Number((actualStake - theoreticalStake).toFixed(2));
+    const isSingleDraw = o.id === 'DRAW' && !splitDrawIds;
+
+    if (isSingleDraw) {
+      requiredIdsCount = 1;
+      fullIdsCount = 0;
+      fullUnitsCount = 1;
+      remainingStake = theoreticalStake;
+      remainingPayout = targetPayout;
+      lastIdNumber = 1;
+      lastIdAmount = theoreticalStake;
+      lastIdPayout = targetPayout;
+      isLastIdPartial = false;
+      hasPartialUnit = false;
+      actualStake = theoreticalStake;
+      additionalAllocation = 0;
+    } else {
+      if (allocationMode === 'EXACT') {
+        if (idCalculationBasis === 'PAYOUT') {
+          fullIdsCount = Math.floor(targetPayout / capacityPayout);
+          remainingPayout = Number((targetPayout - fullIdsCount * capacityPayout).toFixed(2));
+
+          if (remainingPayout < 0.01) {
+            remainingPayout = 0;
+            remainingStake = 0;
+            requiredIdsCount = Math.max(1, fullIdsCount);
+            lastIdNumber = requiredIdsCount;
+            lastIdPayout = capacityPayout;
+            lastIdAmount = capacityStake;
+            isLastIdPartial = false;
+          } else {
+            requiredIdsCount = fullIdsCount + 1;
+            remainingStake = Number((remainingPayout / o.odds).toFixed(2));
+            lastIdNumber = requiredIdsCount;
+            lastIdPayout = remainingPayout;
+            lastIdAmount = remainingStake;
+            isLastIdPartial = true;
+          }
+          actualStake = theoreticalStake;
+          fullUnitsCount = fullIdsCount;
+          hasPartialUnit = isLastIdPartial;
+        } else {
+          fullIdsCount = Math.floor(theoreticalStake / capacityStake);
+          remainingStake = Number((theoreticalStake % capacityStake).toFixed(2));
+
+          if (remainingStake < 0.01) {
+            remainingStake = 0;
+            remainingPayout = 0;
+            requiredIdsCount = Math.max(1, fullIdsCount);
+            lastIdNumber = requiredIdsCount;
+            lastIdAmount = capacityStake;
+            lastIdPayout = capacityPayout;
+            isLastIdPartial = false;
+          } else {
+            requiredIdsCount = fullIdsCount + 1;
+            remainingPayout = Number((remainingStake * o.odds).toFixed(2));
+            lastIdNumber = requiredIdsCount;
+            lastIdAmount = remainingStake;
+            lastIdPayout = remainingPayout;
+            isLastIdPartial = true;
+          }
+          actualStake = theoreticalStake;
+          fullUnitsCount = fullIdsCount;
+          hasPartialUnit = isLastIdPartial;
+        }
+      } else {
+        // FULL_UNITS mode
+        if (idCalculationBasis === 'PAYOUT') {
+          fullUnitsCount = Math.ceil(targetPayout / capacityPayout);
+          requiredIdsCount = Math.max(1, fullUnitsCount);
+          fullIdsCount = requiredIdsCount;
+          actualStake = Number((requiredIdsCount * capacityStake).toFixed(2));
+          additionalAllocation = Number((actualStake - theoreticalStake).toFixed(2));
+          remainingStake = 0;
+          remainingPayout = 0;
+          lastIdNumber = requiredIdsCount;
+          lastIdAmount = capacityStake;
+          lastIdPayout = capacityPayout;
+          isLastIdPartial = false;
+          hasPartialUnit = false;
+        } else {
+          fullUnitsCount = Math.ceil(theoreticalStake / capacityStake);
+          requiredIdsCount = Math.max(1, fullUnitsCount);
+          fullIdsCount = requiredIdsCount;
+          actualStake = Number((requiredIdsCount * capacityStake).toFixed(2));
+          additionalAllocation = Number((actualStake - theoreticalStake).toFixed(2));
+          remainingStake = 0;
+          remainingPayout = 0;
+          lastIdNumber = requiredIdsCount;
+          lastIdAmount = capacityStake;
+          lastIdPayout = capacityPayout;
+          isLastIdPartial = false;
+          hasPartialUnit = false;
+        }
+      }
+
+      if (fullIdsCount > 0) totalFullUnits += fullIdsCount;
+      if (isLastIdPartial) totalPartialUnits += 1;
     }
 
     return {
@@ -155,10 +277,14 @@ export function calculateArbitrage(
       impliedProbPct: Number((impliedProbs[idx] * 100).toFixed(2)),
       theoreticalStake,
       fullIdsCount,
-      remainingStake: remainder,
+      remainingStake,
       requiredIdsCount,
+      stakePerFullId: capacityStake,
+      payoutPerFullId: capacityPayout,
       lastIdNumber,
       lastIdAmount,
+      lastIdPayout,
+      remainingPayout,
       isLastIdPartial,
       actualStake,
       additionalAllocation,
@@ -170,7 +296,7 @@ export function calculateArbitrage(
     };
   });
 
-  const actualTotalInvestment = outcomes.reduce((sum, o) => sum + o.actualStake, 0);
+  const actualTotalInvestment = Number(outcomes.reduce((sum, o) => sum + o.actualStake, 0).toFixed(2));
   const additionalInvestmentTotal = Number((actualTotalInvestment - totalTargetInvestment).toFixed(2));
 
   outcomes.forEach((o) => {
@@ -205,8 +331,11 @@ export function calculateArbitrage(
   return {
     marketType,
     allocationMode,
+    idCalculationBasis,
     totalTargetInvestment,
-    maxStakePerId,
+    maxPayoutPerId: effectiveMaxPayout,
+    maxStakePerId: effectiveMaxStake,
+    splitDrawIds,
     sumProbability,
     sumProbabilityPct: Number(sumProbabilityPct.toFixed(2)),
     isTrueArbitrage,

@@ -334,6 +334,119 @@ body {
   gap: 1.25rem;
 }
 
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 850px) {
+  .form-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.strategies-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 850px) {
+  .strategies-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.basis-segmented-group {
+  display: flex;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem;
+  gap: 0.25rem;
+  min-height: 52px;
+}
+
+.basis-seg-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.basis-seg-btn:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.basis-seg-btn.active {
+  background: var(--bg-surface);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.basis-seg-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.basis-seg-btn.active .basis-seg-title {
+  color: var(--color-primary);
+}
+
+.basis-seg-hint {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.field-hint-text {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
+.draw-toggle-row {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0.85rem;
+  display: flex;
+  align-items: center;
+}
+
+.draw-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.78rem;
+  color: var(--text-dark);
+  cursor: pointer;
+  user-select: none;
+}
+
+.draw-toggle-label input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+}
+
+.inline-icon {
+  display: inline-block;
+  vertical-align: -2px;
+  margin-right: 0.35rem;
+}
+
 .form-grid-4 {
   display: grid;
   grid-template-columns: 1fr 1fr 2fr;
