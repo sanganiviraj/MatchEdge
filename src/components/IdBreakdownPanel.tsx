@@ -18,7 +18,11 @@ export const IdBreakdownPanel: React.FC<IdBreakdownPanelProps> = ({ result }) =>
           <h2 className="panel-heading">ID Allocation Capacity & Unit Breakdown</h2>
         </div>
         <div className="header-meta-badge">
-          <span className="badge-meta">Max ${result.maxStakePerId} / ID</span>
+          <span className="badge-meta">
+            {result.idCalculationBasis === 'PAYOUT'
+              ? `Max $${result.maxPayoutPerId} Payout / ID`
+              : `Max $${result.maxStakePerId} Stake / ID`}
+          </span>
         </div>
       </div>
 
@@ -27,7 +31,13 @@ export const IdBreakdownPanel: React.FC<IdBreakdownPanelProps> = ({ result }) =>
           <div className="id-stat-box">
             <span className="stat-box-lbl">Total IDs Required</span>
             <div className="stat-box-val num-tabular text-dark">{result.totalIdsRequired}</div>
-            <span className="stat-box-sub">Team IDs + 1 Draw ID</span>
+            <span className="stat-box-sub">
+              {result.marketType === '3WAY'
+                ? result.splitDrawIds
+                  ? 'All 3 outcomes split'
+                  : 'Teams + 1 Draw ID'
+                : 'Across all outcomes'}
+            </span>
           </div>
 
           <div className="id-stat-box">
@@ -37,15 +47,21 @@ export const IdBreakdownPanel: React.FC<IdBreakdownPanelProps> = ({ result }) =>
           </div>
 
           <div className="id-stat-box">
-            <span className="stat-box-lbl">Full ${result.maxStakePerId} Units</span>
+            <span className="stat-box-lbl">
+              {result.idCalculationBasis === 'PAYOUT'
+                ? `Full $${result.maxPayoutPerId} Payout Units`
+                : `Full $${result.maxStakePerId} Stake Units`}
+            </span>
             <div className="stat-box-val num-tabular text-green">{result.totalFullUnits}</div>
             <span className="stat-box-sub">Full capacity accounts</span>
           </div>
 
           <div className="id-stat-box">
             <span className="stat-box-lbl">Partial / Single ID Units</span>
-            <div className="stat-box-val num-tabular text-amber">{result.totalPartialUnits + (result.marketType === '3WAY' ? 1 : 0)}</div>
-            <span className="stat-box-sub">Remainder & Draw accounts</span>
+            <div className="stat-box-val num-tabular text-amber">
+              {result.totalPartialUnits + (!result.splitDrawIds && result.marketType === '3WAY' ? 1 : 0)}
+            </div>
+            <span className="stat-box-sub">Remainder & single accounts</span>
           </div>
         </div>
 
@@ -54,6 +70,8 @@ export const IdBreakdownPanel: React.FC<IdBreakdownPanelProps> = ({ result }) =>
           <div className="id-cards-list">
             {result.outcomes.map((o) => {
               const isDraw = o.id === 'DRAW';
+              const isSingleDraw = isDraw && !result.splitDrawIds;
+
               return (
                 <div key={o.id} className="id-breakdown-card">
                   <div className="id-card-top">
@@ -66,24 +84,26 @@ export const IdBreakdownPanel: React.FC<IdBreakdownPanelProps> = ({ result }) =>
                     <div className="detail-item">
                       <span className="d-lbl">Allocated IDs:</span>
                       <span className="d-val num-tabular bold-val">
-                        {isDraw ? '1 ID (Single Account)' : `${o.requiredIdsCount} IDs`}
+                        {isSingleDraw ? '1 ID (Single Account)' : `${o.requiredIdsCount} IDs`}
                       </span>
                     </div>
 
                     <div className="detail-item">
                       <span className="d-lbl">Structure:</span>
                       <span className="d-val num-tabular">
-                        {isDraw
-                          ? `1 × ${formatCurrency(o.actualStake)} (Full Draw Money)`
-                          : `${o.fullIdsCount} × $${result.maxStakePerId} (${formatCurrency(o.fullIdsCount * result.maxStakePerId)})`}
+                        {isSingleDraw
+                          ? `1 × ${formatCurrency(o.actualStake)} (Payout: ${formatCurrency(o.payout)})`
+                          : o.fullIdsCount > 0
+                          ? `${o.fullIdsCount} × ${formatCurrency(o.stakePerFullId)} (${formatCurrency(o.payoutPerFullId)} Payout / ID)`
+                          : '0 Full Units'}
                       </span>
                     </div>
 
-                    {!isDraw && o.remainingStake > 0 && (
+                    {!isSingleDraw && o.isLastIdPartial && (
                       <div className="detail-item">
                         <span className="d-lbl">Partial Unit (Last ID):</span>
                         <span className="d-val num-tabular text-amber">
-                          1 × {formatCurrency(o.remainingStake)}
+                          1 × {formatCurrency(o.lastIdAmount)} ({formatCurrency(o.lastIdPayout)} Payout)
                         </span>
                       </div>
                     )}
@@ -98,7 +118,16 @@ export const IdBreakdownPanel: React.FC<IdBreakdownPanelProps> = ({ result }) =>
       <div className="panel-footer-disclaimer">
         <ShieldAlert size={16} className="text-amber flex-shrink-0" />
         <span>
-          <strong>DRAW ALLOCATION RULE:</strong> All Draw money is placed entirely on 1 single account/ID. Team 1 and Team 2 stakes are divided into ${result.maxStakePerId} per-ID units.
+          <strong>ID ALLOCATION POLICY:</strong>{' '}
+          {result.idCalculationBasis === 'PAYOUT'
+            ? `Each betting ID is calculated and capped at a maximum payout of $${result.maxPayoutPerId}.`
+            : result.idCalculationBasis === 'DUAL'
+            ? `Each betting ID enforces both a maximum stake of $${result.maxStakePerId} and maximum payout of $${result.maxPayoutPerId}.`
+            : `Each betting ID is capped at a maximum stake of $${result.maxStakePerId}.`}{' '}
+          {result.marketType === '3WAY' &&
+            (!result.splitDrawIds
+              ? 'Draw money is placed entirely on 1 single account.'
+              : 'Draw stakes are divided across IDs proportionally.')}
         </span>
       </div>
     </section>

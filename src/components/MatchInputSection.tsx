@@ -1,18 +1,24 @@
 import React from 'react';
-import { Sliders, RotateCcw, Calculator } from 'lucide-react';
-import type { MarketType, AllocationMode, OutcomeInput, ValidationErrors } from '../types/arbitrage';
+import { Sliders, RotateCcw, Calculator, Layers, ShieldCheck } from 'lucide-react';
+import type { MarketType, AllocationMode, IdCalculationBasis, OutcomeInput, ValidationErrors } from '../types/arbitrage';
 
 interface MatchInputSectionProps {
   marketType: MarketType;
   allocationMode: AllocationMode;
+  idCalculationBasis: IdCalculationBasis;
   totalAmount: number | '';
+  maxPayoutPerId: number | '';
   maxStakePerId: number | '';
+  splitDrawIds: boolean;
   outcomesInput: OutcomeInput[];
   errors: ValidationErrors;
   onMarketTypeChange: (mode: MarketType) => void;
   onAllocationModeChange: (mode: AllocationMode) => void;
+  onIdCalculationBasisChange: (basis: IdCalculationBasis) => void;
   onTotalAmountChange: (val: number | '') => void;
+  onMaxPayoutChange: (val: number | '') => void;
   onMaxStakeChange: (val: number | '') => void;
+  onSplitDrawIdsChange: (split: boolean) => void;
   onOddsChange: (id: 'HOME' | 'DRAW' | 'AWAY', oddsVal: number | '') => void;
   onTeamNameChange: (id: 'HOME' | 'DRAW' | 'AWAY', name: string) => void;
   onCalculate: () => void;
@@ -22,14 +28,20 @@ interface MatchInputSectionProps {
 export const MatchInputSection: React.FC<MatchInputSectionProps> = ({
   marketType,
   allocationMode,
+  idCalculationBasis,
   totalAmount,
+  maxPayoutPerId,
   maxStakePerId,
+  splitDrawIds,
   outcomesInput,
   errors,
   onMarketTypeChange,
   onAllocationModeChange,
+  onIdCalculationBasisChange,
   onTotalAmountChange,
+  onMaxPayoutChange,
   onMaxStakeChange,
+  onSplitDrawIdsChange,
   onOddsChange,
   onTeamNameChange,
   onCalculate,
@@ -68,7 +80,7 @@ export const MatchInputSection: React.FC<MatchInputSectionProps> = ({
       </div>
 
       <div className="config-form-body">
-        <div className="form-grid-4">
+        <div className="form-grid-3">
           <div className="form-field">
             <label className="field-label">
               Total Target Investment
@@ -93,8 +105,35 @@ export const MatchInputSection: React.FC<MatchInputSectionProps> = ({
 
           <div className="form-field">
             <label className="field-label">
+              Maximum Payout Per ID
+              {(idCalculationBasis === 'PAYOUT' || idCalculationBasis === 'DUAL') && (
+                <span className="field-required">*</span>
+              )}
+            </label>
+            <div className="input-affix-wrapper">
+              <span className="input-prefix">$</span>
+              <input
+                type="number"
+                step="100"
+                min="10"
+                className={`text-input input-with-prefix ${errors.maxPayoutPerId ? 'input-error' : ''}`}
+                value={maxPayoutPerId}
+                onChange={(e) =>
+                  onMaxPayoutChange(e.target.value === '' ? '' : parseFloat(e.target.value))
+                }
+                placeholder="1000"
+              />
+            </div>
+            {errors.maxPayoutPerId && <span className="field-error-text">{errors.maxPayoutPerId}</span>}
+            <span className="field-hint-text">Limits gross return per betting ID</span>
+          </div>
+
+          <div className="form-field">
+            <label className="field-label">
               Max Stake Per ID
-              <span className="field-required">*</span>
+              {(idCalculationBasis === 'STAKE' || idCalculationBasis === 'DUAL') && (
+                <span className="field-required">*</span>
+              )}
             </label>
             <div className="input-affix-wrapper">
               <span className="input-prefix">$</span>
@@ -111,18 +150,60 @@ export const MatchInputSection: React.FC<MatchInputSectionProps> = ({
               />
             </div>
             {errors.maxStakePerId && <span className="field-error-text">{errors.maxStakePerId}</span>}
+            <span className="field-hint-text">Limits maximum wager per betting ID</span>
+          </div>
+        </div>
+
+        <div className="strategies-grid">
+          <div className="form-field">
+            <label className="field-label">
+              <Layers size={14} className="inline-icon text-blue" />
+              ID Calculation Driver
+            </label>
+            <div className="basis-segmented-group">
+              <button
+                type="button"
+                className={`basis-seg-btn ${idCalculationBasis === 'PAYOUT' ? 'active' : ''}`}
+                onClick={() => onIdCalculationBasisChange('PAYOUT')}
+                title="Calculate IDs based on Maximum Payout Per ID"
+              >
+                <span className="basis-seg-title">Max Payout / ID</span>
+                <span className="basis-seg-hint">${maxPayoutPerId || 1000} cap</span>
+              </button>
+              <button
+                type="button"
+                className={`basis-seg-btn ${idCalculationBasis === 'STAKE' ? 'active' : ''}`}
+                onClick={() => onIdCalculationBasisChange('STAKE')}
+                title="Calculate IDs based on Max Stake Per ID"
+              >
+                <span className="basis-seg-title">Max Stake / ID</span>
+                <span className="basis-seg-hint">${maxStakePerId || 100} cap</span>
+              </button>
+              <button
+                type="button"
+                className={`basis-seg-btn ${idCalculationBasis === 'DUAL' ? 'active' : ''}`}
+                onClick={() => onIdCalculationBasisChange('DUAL')}
+                title="Enforce both stake and payout limits per ID"
+              >
+                <span className="basis-seg-title">Dual Limits</span>
+                <span className="basis-seg-hint">Stake & Payout</span>
+              </button>
+            </div>
           </div>
 
-          <div className="form-field span-2-col">
-            <label className="field-label">Stake Distribution Strategy</label>
+          <div className="form-field">
+            <label className="field-label">
+              <ShieldCheck size={14} className="inline-icon text-green" />
+              Stake Distribution Strategy
+            </label>
             <div className="mode-toggle-group">
               <button
                 type="button"
                 className={`mode-toggle-btn ${allocationMode === 'EXACT' ? 'active-mode' : ''}`}
                 onClick={() => onAllocationModeChange('EXACT')}
               >
-                <div className="mode-btn-title">Mode 1 — Exact Stake</div>
-                <div className="mode-btn-sub">Exact mathematical stakes (e.g. $1,250)</div>
+                <div className="mode-btn-title">Mode 1 — Exact Allocation</div>
+                <div className="mode-btn-sub">Exact stakes, remainder on last ID</div>
               </button>
 
               <button
@@ -130,12 +211,29 @@ export const MatchInputSection: React.FC<MatchInputSectionProps> = ({
                 className={`mode-toggle-btn ${allocationMode === 'FULL_UNITS' ? 'active-mode' : ''}`}
                 onClick={() => onAllocationModeChange('FULL_UNITS')}
               >
-                <div className="mode-btn-title">Mode 2 — Full ${maxStakePerId || 100} Units</div>
-                <div className="mode-btn-sub">Rounds up to full units (e.g. $1,300)</div>
+                <div className="mode-btn-title">
+                  Mode 2 — Full {idCalculationBasis === 'PAYOUT' ? `$${maxPayoutPerId || 1000} Payout` : `$${maxStakePerId || 100} Stake`} Units
+                </div>
+                <div className="mode-btn-sub">Rounds up to full capacity IDs</div>
               </button>
             </div>
           </div>
         </div>
+
+        {marketType === '3WAY' && (
+          <div className="draw-toggle-row">
+            <label className="draw-toggle-label">
+              <input
+                type="checkbox"
+                checked={splitDrawIds}
+                onChange={(e) => onSplitDrawIdsChange(e.target.checked)}
+              />
+              <span>
+                <strong>Split Draw across IDs</strong> — Divide Draw stake based on {idCalculationBasis === 'PAYOUT' ? `Max Payout ($${maxPayoutPerId || 1000})` : `Max Stake ($${maxStakePerId || 100})`} (Uncheck if using a single exchange account for Draw).
+              </span>
+            </label>
+          </div>
+        )}
 
         <div className="odds-input-section">
           <div className="section-label-row">
