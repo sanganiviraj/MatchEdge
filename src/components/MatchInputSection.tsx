@@ -115,17 +115,17 @@ export const MatchInputSection: React.FC<MatchInputSectionProps> = ({
               <input
                 type="number"
                 step="100"
-                min="10"
+                min="0"
                 className={`text-input input-with-prefix ${errors.maxPayoutPerId ? 'input-error' : ''}`}
                 value={maxPayoutPerId}
                 onChange={(e) =>
                   onMaxPayoutChange(e.target.value === '' ? '' : parseFloat(e.target.value))
                 }
-                placeholder="1000"
+                placeholder="1000 (0 for no limit)"
               />
             </div>
             {errors.maxPayoutPerId && <span className="field-error-text">{errors.maxPayoutPerId}</span>}
-            <span className="field-hint-text">Limits gross return per betting ID</span>
+            <span className="field-hint-text">Limits gross return per betting ID (0 = no limit)</span>
           </div>
 
           <div className="form-field">
@@ -168,7 +168,7 @@ export const MatchInputSection: React.FC<MatchInputSectionProps> = ({
                 title="Calculate IDs based on Maximum Payout Per ID"
               >
                 <span className="basis-seg-title">Max Payout / ID</span>
-                <span className="basis-seg-hint">${maxPayoutPerId || 1000} cap</span>
+                <span className="basis-seg-hint">{maxPayoutPerId === 0 ? 'No limit' : `$${maxPayoutPerId || 1000} cap`}</span>
               </button>
               <button
                 type="button"
@@ -212,7 +212,7 @@ export const MatchInputSection: React.FC<MatchInputSectionProps> = ({
                 onClick={() => onAllocationModeChange('FULL_UNITS')}
               >
                 <div className="mode-btn-title">
-                  Mode 2 — Full {idCalculationBasis === 'PAYOUT' ? `$${maxPayoutPerId || 1000} Payout` : `$${maxStakePerId || 100} Stake`} Units
+                  Mode 2 — Full {idCalculationBasis === 'PAYOUT' ? (maxPayoutPerId === 0 ? 'Unlimited' : `$${maxPayoutPerId || 1000} Payout`) : `$${maxStakePerId || 100} Stake`} Units
                 </div>
                 <div className="mode-btn-sub">Rounds up to full capacity IDs</div>
               </button>
@@ -229,7 +229,7 @@ export const MatchInputSection: React.FC<MatchInputSectionProps> = ({
                 onChange={(e) => onSplitDrawIdsChange(e.target.checked)}
               />
               <span>
-                <strong>Split Draw across IDs</strong> — Divide Draw stake based on {idCalculationBasis === 'PAYOUT' ? `Max Payout ($${maxPayoutPerId || 1000})` : `Max Stake ($${maxStakePerId || 100})`} (Uncheck if using a single exchange account for Draw).
+                <strong>Split Draw across IDs</strong> — Divide Draw stake based on {idCalculationBasis === 'PAYOUT' ? (maxPayoutPerId === 0 ? 'No Limit' : `Max Payout ($${maxPayoutPerId || 1000})`) : `Max Stake ($${maxStakePerId || 100})`} (Uncheck if using a single exchange account for Draw).
               </span>
             </label>
           </div>

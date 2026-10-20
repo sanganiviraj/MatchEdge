@@ -20,7 +20,13 @@ export const IdBreakdownPanel: React.FC<IdBreakdownPanelProps> = ({ result }) =>
         <div className="header-meta-badge">
           <span className="badge-meta">
             {result.idCalculationBasis === 'PAYOUT'
-              ? `Max $${result.maxPayoutPerId} Payout / ID`
+              ? result.maxPayoutPerId === 0
+                ? 'No Max Payout Limit / ID'
+                : `Max $${result.maxPayoutPerId} Payout / ID`
+              : result.idCalculationBasis === 'DUAL'
+              ? result.maxPayoutPerId === 0
+                ? `Max $${result.maxStakePerId} Stake / ID (No Payout Limit)`
+                : `Max $${result.maxStakePerId} Stake & $${result.maxPayoutPerId} Payout / ID`
               : `Max $${result.maxStakePerId} Stake / ID`}
           </span>
         </div>
@@ -49,7 +55,9 @@ export const IdBreakdownPanel: React.FC<IdBreakdownPanelProps> = ({ result }) =>
           <div className="id-stat-box">
             <span className="stat-box-lbl">
               {result.idCalculationBasis === 'PAYOUT'
-                ? `Full $${result.maxPayoutPerId} Payout Units`
+                ? result.maxPayoutPerId === 0
+                  ? 'Allocated ID Units'
+                  : `Full $${result.maxPayoutPerId} Payout Units`
                 : `Full $${result.maxStakePerId} Stake Units`}
             </span>
             <div className="stat-box-val num-tabular text-green">{result.totalFullUnits}</div>
@@ -94,7 +102,9 @@ export const IdBreakdownPanel: React.FC<IdBreakdownPanelProps> = ({ result }) =>
                         {isSingleDraw
                           ? `1 × ${formatCurrency(o.actualStake)} (Payout: ${formatCurrency(o.payout)})`
                           : o.fullIdsCount > 0
-                          ? `${o.fullIdsCount} × ${formatCurrency(o.stakePerFullId)} (${formatCurrency(o.payoutPerFullId)} Payout / ID)`
+                          ? result.idCalculationBasis === 'PAYOUT' && result.maxPayoutPerId === 0
+                            ? `1 × ${formatCurrency(o.actualStake)} (Payout: ${formatCurrency(o.payout)})`
+                            : `${o.fullIdsCount} × ${formatCurrency(o.stakePerFullId)} (${formatCurrency(o.payoutPerFullId)} Payout / ID)`
                           : '0 Full Units'}
                       </span>
                     </div>
@@ -120,9 +130,13 @@ export const IdBreakdownPanel: React.FC<IdBreakdownPanelProps> = ({ result }) =>
         <span>
           <strong>ID ALLOCATION POLICY:</strong>{' '}
           {result.idCalculationBasis === 'PAYOUT'
-            ? `Each betting ID is calculated and capped at a maximum payout of $${result.maxPayoutPerId}.`
+            ? result.maxPayoutPerId === 0
+              ? 'No maximum payout limit is enforced per betting ID (outcomes allocated to 1 ID each).'
+              : `Each betting ID is calculated and capped at a maximum payout of $${result.maxPayoutPerId}.`
             : result.idCalculationBasis === 'DUAL'
-            ? `Each betting ID enforces both a maximum stake of $${result.maxStakePerId} and maximum payout of $${result.maxPayoutPerId}.`
+            ? result.maxPayoutPerId === 0
+              ? `Each betting ID enforces a maximum stake of $${result.maxStakePerId} with no payout limit.`
+              : `Each betting ID enforces both a maximum stake of $${result.maxStakePerId} and maximum payout of $${result.maxPayoutPerId}.`
             : `Each betting ID is capped at a maximum stake of $${result.maxStakePerId}.`}{' '}
           {result.marketType === '3WAY' &&
             (!result.splitDrawIds

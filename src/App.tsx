@@ -66,7 +66,7 @@ export function App() {
       allocationMode,
       idCalculationBasis,
       Number(totalAmount),
-      Number(maxPayoutPerId || 1000),
+      maxPayoutPerId === '' ? 0 : Number(maxPayoutPerId),
       Number(maxStakePerId || 100),
       outcomesInput,
       splitDrawIds
