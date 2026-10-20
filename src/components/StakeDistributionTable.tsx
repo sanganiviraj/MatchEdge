@@ -25,7 +25,9 @@ export const StakeDistributionTable: React.FC<StakeDistributionTableProps> = ({ 
           <span className="badge-mode">
             {result.idCalculationBasis === 'PAYOUT'
               ? result.maxPayoutPerId === 0
-                ? 'Basis: Max Payout (No Limit)'
+                ? result.maxStakePerId > 0
+                  ? `Basis: Max Stake $${result.maxStakePerId}/ID (No Payout Limit)`
+                  : 'Basis: Max Payout (No Limit)'
                 : `Basis: Max Payout $${result.maxPayoutPerId}/ID`
               : result.idCalculationBasis === 'DUAL'
               ? result.maxPayoutPerId === 0
@@ -48,7 +50,9 @@ export const StakeDistributionTable: React.FC<StakeDistributionTableProps> = ({ 
               <th className="th-right">
                 {result.idCalculationBasis === 'PAYOUT'
                   ? result.maxPayoutPerId === 0
-                    ? 'Unit Stake (No Limit)'
+                    ? result.maxStakePerId > 0
+                      ? `$${result.maxStakePerId} Stake Units`
+                      : 'Unit Stake (No Limit)'
                     : `$${result.maxPayoutPerId} Payout Units`
                   : `$${result.maxStakePerId} Units`}
               </th>
