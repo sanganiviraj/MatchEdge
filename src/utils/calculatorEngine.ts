@@ -47,8 +47,8 @@ export function validateCalculatorInputs(
   }
 
   if (idCalculationBasis === 'PAYOUT' || idCalculationBasis === 'DUAL') {
-    if (maxPayoutPerId === '' || isNaN(Number(maxPayoutPerId)) || Number(maxPayoutPerId) <= 0) {
-      errors.maxPayoutPerId = 'Maximum payout must be greater than $0';
+    if (maxPayoutPerId === '' || isNaN(Number(maxPayoutPerId)) || Number(maxPayoutPerId) < 0) {
+      errors.maxPayoutPerId = 'Maximum payout must be 0 (no limit) or greater';
     }
   }
 
@@ -99,17 +99,17 @@ export function calculateArbitrage(
     return null;
   }
 
-  if (idCalculationBasis === 'PAYOUT' && maxPayoutPerId <= 0) {
+  if (idCalculationBasis === 'PAYOUT' && maxPayoutPerId < 0) {
     return null;
   }
   if (idCalculationBasis === 'STAKE' && maxStakePerId <= 0) {
     return null;
   }
-  if (idCalculationBasis === 'DUAL' && (maxPayoutPerId <= 0 || maxStakePerId <= 0)) {
+  if (idCalculationBasis === 'DUAL' && (maxPayoutPerId < 0 || maxStakePerId <= 0)) {
     return null;
   }
 
-  const effectiveMaxPayout = maxPayoutPerId > 0 ? maxPayoutPerId : 1000;
+  const effectiveMaxPayout = maxPayoutPerId >= 0 ? maxPayoutPerId : 0;
   const effectiveMaxStake = maxStakePerId > 0 ? maxStakePerId : 100;
 
   const impliedProbs = validInputs.map((o) => 1 / o.odds);
@@ -143,15 +143,28 @@ export function calculateArbitrage(
     let capacityPayout: number;
 
     if (idCalculationBasis === 'PAYOUT') {
-      capacityPayout = effectiveMaxPayout;
-      capacityStake = Number((effectiveMaxPayout / o.odds).toFixed(2));
+      if (effectiveMaxPayout === 0) {
+        // No limit on maximum payout: each outcome is allocated into 1 ID
+        capacityPayout = targetPayout;
+        capacityStake = theoreticalStake;
+      } else {
+        capacityPayout = effectiveMaxPayout;
+        capacityStake = Number((effectiveMaxPayout / o.odds).toFixed(2));
+      }
     } else if (idCalculationBasis === 'STAKE') {
       capacityStake = effectiveMaxStake;
       capacityPayout = Number((effectiveMaxStake * o.odds).toFixed(2));
     } else {
-      const stakeCapFromPayout = effectiveMaxPayout / o.odds;
-      capacityStake = Number(Math.min(effectiveMaxStake, stakeCapFromPayout).toFixed(2));
-      capacityPayout = Number((capacityStake * o.odds).toFixed(2));
+      // DUAL basis
+      if (effectiveMaxPayout === 0) {
+        // No payout limit, only stake limit per ID applies
+        capacityStake = effectiveMaxStake;
+        capacityPayout = Number((effectiveMaxStake * o.odds).toFixed(2));
+      } else {
+        const stakeCapFromPayout = effectiveMaxPayout / o.odds;
+        capacityStake = Number(Math.min(effectiveMaxStake, stakeCapFromPayout).toFixed(2));
+        capacityPayout = Number((capacityStake * o.odds).toFixed(2));
+      }
     }
 
     if (capacityStake <= 0) capacityStake = 1;

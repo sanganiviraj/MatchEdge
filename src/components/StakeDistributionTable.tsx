@@ -23,7 +23,15 @@ export const StakeDistributionTable: React.FC<StakeDistributionTableProps> = ({ 
         </div>
         <div className="header-meta-badge">
           <span className="badge-mode">
-            {result.idCalculationBasis === 'PAYOUT' ? `Basis: Max Payout $${result.maxPayoutPerId}/ID` : `Basis: Max Stake $${result.maxStakePerId}/ID`} • {isExactMode ? 'Exact Mode' : 'Full Units Mode'}
+            {result.idCalculationBasis === 'PAYOUT'
+              ? result.maxPayoutPerId === 0
+                ? 'Basis: Max Payout (No Limit)'
+                : `Basis: Max Payout $${result.maxPayoutPerId}/ID`
+              : result.idCalculationBasis === 'DUAL'
+              ? result.maxPayoutPerId === 0
+                ? `Basis: Max Stake $${result.maxStakePerId}/ID (No Payout Limit)`
+                : `Basis: Stake $${result.maxStakePerId} & Payout $${result.maxPayoutPerId}/ID`
+              : `Basis: Max Stake $${result.maxStakePerId}/ID`} • {isExactMode ? 'Exact Mode' : 'Full Units Mode'}
           </span>
         </div>
       </div>
@@ -37,7 +45,13 @@ export const StakeDistributionTable: React.FC<StakeDistributionTableProps> = ({ 
               <th className="th-right">Implied %</th>
               <th className="th-right">Ideal Stake</th>
               <th className="th-right">IDs Needed</th>
-              <th className="th-right">{result.idCalculationBasis === 'PAYOUT' ? `$${result.maxPayoutPerId} Payout Units` : `$${result.maxStakePerId} Units`}</th>
+              <th className="th-right">
+                {result.idCalculationBasis === 'PAYOUT'
+                  ? result.maxPayoutPerId === 0
+                    ? 'Unit Stake (No Limit)'
+                    : `$${result.maxPayoutPerId} Payout Units`
+                  : `$${result.maxStakePerId} Units`}
+              </th>
               <th className="th-right">Remaining ID</th>
               <th className="th-right">Gross Payout</th>
               <th className="th-right">Net Profit</th>
@@ -135,7 +149,7 @@ export const StakeDistributionTable: React.FC<StakeDistributionTableProps> = ({ 
         <div className="table-notice-banner notice-blue">
           <Info size={16} className="text-blue flex-shrink-0" />
           <span>
-            <strong>FULL UNITS MODE ACTIVE:</strong> Ideal stakes rounded UP to nearest full {result.idCalculationBasis === 'PAYOUT' ? `$${result.maxPayoutPerId} Payout` : `$${result.maxStakePerId} Stake`} unit. {result.splitDrawIds ? 'Draw is divided across IDs.' : 'Draw is invested in 1 single ID.'} Total investment increased by <strong>+{formatCurrency(result.additionalInvestmentTotal)}</strong>.
+            <strong>FULL UNITS MODE ACTIVE:</strong> Ideal stakes rounded UP to nearest full {result.idCalculationBasis === 'PAYOUT' ? (result.maxPayoutPerId === 0 ? 'Unlimited Payout' : `$${result.maxPayoutPerId} Payout`) : `$${result.maxStakePerId} Stake`} unit. {result.splitDrawIds ? 'Draw is divided across IDs.' : 'Draw is invested in 1 single ID.'} Total investment increased by <strong>+{formatCurrency(result.additionalInvestmentTotal)}</strong>.
           </span>
         </div>
       )}
