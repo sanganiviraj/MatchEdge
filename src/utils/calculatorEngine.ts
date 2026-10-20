@@ -144,9 +144,15 @@ export function calculateArbitrage(
 
     if (idCalculationBasis === 'PAYOUT') {
       if (effectiveMaxPayout === 0) {
-        // No limit on maximum payout: each outcome is allocated into 1 ID
-        capacityPayout = targetPayout;
-        capacityStake = theoreticalStake;
+        if (effectiveMaxStake > 0) {
+          // If payout limit is 0 (no limit), respect the stake cap per ID
+          capacityStake = effectiveMaxStake;
+          capacityPayout = Number((effectiveMaxStake * o.odds).toFixed(2));
+        } else {
+          // Both payout and stake are unlimited: 1 single ID per outcome
+          capacityPayout = targetPayout;
+          capacityStake = theoreticalStake;
+        }
       } else {
         capacityPayout = effectiveMaxPayout;
         capacityStake = Number((effectiveMaxPayout / o.odds).toFixed(2));

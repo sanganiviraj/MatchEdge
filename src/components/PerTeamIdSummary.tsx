@@ -23,7 +23,9 @@ export const PerTeamIdSummary: React.FC<PerTeamIdSummaryProps> = ({ result }) =>
           <span className="badge-mode">
             {result.idCalculationBasis === 'PAYOUT'
               ? result.maxPayoutPerId === 0
-                ? 'Max Payout / ID: No Limit'
+                ? result.maxStakePerId > 0
+                  ? `Max Stake / ID: $${result.maxStakePerId} (No Payout Limit)`
+                  : 'Max Payout / ID: No Limit'
                 : `Max Payout / ID: $${result.maxPayoutPerId}`
               : result.idCalculationBasis === 'DUAL'
               ? result.maxPayoutPerId === 0
@@ -86,9 +88,7 @@ export const PerTeamIdSummary: React.FC<PerTeamIdSummaryProps> = ({ result }) =>
                     <>
                       {o.fullIdsCount > 0 && (
                         <div className="dist-chip chip-full">
-                          {result.idCalculationBasis === 'PAYOUT' && result.maxPayoutPerId === 0
-                            ? `1 ID × ${formatCurrency(o.actualStake)} (${formatCurrency(o.payout)} Payout)`
-                            : <><strong>{o.fullIdsCount} IDs</strong> × {formatCurrency(o.stakePerFullId)} ({formatCurrency(o.payoutPerFullId)} Payout / ID)</>}
+                          <strong>{o.fullIdsCount} IDs</strong> × {formatCurrency(o.stakePerFullId)} ({formatCurrency(o.payoutPerFullId)} Payout / ID)
                         </div>
                       )}
 

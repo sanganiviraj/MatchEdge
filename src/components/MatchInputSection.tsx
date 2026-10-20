@@ -168,7 +168,7 @@ export const MatchInputSection: React.FC<MatchInputSectionProps> = ({
                 title="Calculate IDs based on Maximum Payout Per ID"
               >
                 <span className="basis-seg-title">Max Payout / ID</span>
-                <span className="basis-seg-hint">{maxPayoutPerId === 0 ? 'No limit' : `$${maxPayoutPerId || 1000} cap`}</span>
+                <span className="basis-seg-hint">{maxPayoutPerId === 0 ? (maxStakePerId ? `$${maxStakePerId} stake cap` : 'No limit') : `$${maxPayoutPerId || 1000} cap`}</span>
               </button>
               <button
                 type="button"
